@@ -19,6 +19,9 @@ Parameters:
   SourceUserOrRoleName:
     Type: String
     Description: 'The name of the principal user or role in the source account'
+  LowerCaseBucketPrefix:
+    Type: String
+    Description: 'Prefix for the buckets created by this template'
 
 
 Conditions:
@@ -30,7 +33,7 @@ Resources:
   S3Bucket:
     Type: 'AWS::S3::Bucket'
     Properties:
-      BucketName: !Sub 'dynamodb-export-to-s3-${AWS::Region}-${AWS::AccountId}'
+      BucketName: !Sub ${LowerCaseBucketPrefix}-ddb-export${AWS::Region}-${AWS::AccountId}
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -58,10 +61,24 @@ Resources:
                 AWS: !If [IsUser, !Sub 'arn:aws:iam::${SourceAWSAccountNumber}:user/${SourceUserOrRoleName}', !Sub 'arn:aws:iam::${SourceAWSAccountNumber}:role/${SourceUserOrRoleName}']
               Action:
                 - 's3:PutObject'
-              Resource: !Sub 'arn:aws:s3:::dynamodb-export-to-s3-${AWS::Region}-${AWS::AccountId}/*'
+              Resource: !Join
+                - ''
+                - - 'arn:aws:s3:::'
+                  - !Ref S3Bucket
+                  - /*
+            - Effect: Allow
+              Principal:
+                AWS: !If [IsUser, !Sub 'arn:aws:iam::${SourceAWSAccountNumber}:user/${SourceUserOrRoleName}', !Sub 'arn:aws:iam::${SourceAWSAccountNumber}:role/${SourceUserOrRoleName}']
+              Action:
+                - 's3:ListBucket'
+              Resource: !Join
+                - ''
+                - - 'arn:aws:s3:::'
+                  - !Ref S3Bucket
   LoggingBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
+      BucketName: !Sub ${LowerCaseBucketPrefix}-replication-logging-bucket
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -100,7 +117,7 @@ Resources:
   CrossAccountAssumeRole:
     Type: 'AWS::IAM::Role'
     Properties:
-      RoleName: 'cross_account_assume_role'
+      RoleName: !Sub '${AWS::StackName}-cross_account_assume_role'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -149,5 +166,12 @@ Resources:
                   - 's3:GetObject'
                   - 's3:ListBucket'
                 Resource:
-                  - !Sub 'arn:aws:s3:::dynamodb-export-to-s3-${AWS::Region}-${AWS::AccountId}/*'
-                  - !Sub 'arn:aws:s3:::dynamodb-export-to-s3-${AWS::Region}-${AWS::AccountId}'
+                  - !Join
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - !Ref S3Bucket
+                      - '/*'
+                  - !Join
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - !Ref S3Bucket

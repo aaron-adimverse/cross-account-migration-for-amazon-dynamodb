@@ -27,7 +27,6 @@ Parameters:
     Type: String
     Description: 'The name of the principal user or role in the source account'
   
-  
 Conditions:
   IsUser: !Equals [ !Ref SourceUserType, 'user' ]
   IsRole: !Equals [ !Ref SourceUserType, 'role' ]
@@ -36,6 +35,7 @@ Resources:
   DynamodbCrossAccountCdcLambdaRole:
     Type: 'AWS::IAM::Role'
     Properties:
+      RoleName: !Sub "${AWS::StackName}CrossAccountCdcRole"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -64,7 +64,7 @@ Resources:
   DynamodbStreamReadPolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: dynamodbstream-read-policy
+      PolicyName: !Sub '${AWS::StackName}-dynamodbstream-read-policy'
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -81,7 +81,7 @@ Resources:
   TargetDynamodbTableAccessPolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: target_dynamodb_table_access_policy
+      PolicyName: !Sub '${AWS::StackName}-target_dynamodb_table_access_policy'
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -96,7 +96,7 @@ Resources:
   SQSSendMessagePolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: sqs-send-message-policy
+      PolicyName: !Sub '${AWS::StackName}-sqs-send-message-policy'
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -110,7 +110,7 @@ Resources:
   KMSEncryptionPolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: kms-encryption-policy
+      PolicyName: !Sub '${AWS::StackName}-kms-encryption-policy'
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -168,14 +168,14 @@ Resources:
   DQLForFailedEvents:
       Type: 'AWS::SQS::Queue'
       Properties:
-        QueueName: dynamodb-cross-account-cdc-failed-events-dlq
+        QueueName: !Sub '${AWS::StackName}-dynamodb-cross-account-cdc-failed-events-dlq'
         KmsMasterKeyId: !GetAtt KMSKeyForSQS.Arn
         VisibilityTimeout: 300
         MessageRetentionPeriod: 1209600
   SQSQueueForFailedEvents:
     Type: 'AWS::SQS::Queue'
     Properties:
-      QueueName: dynamodb-cross-account-cdc-failed-events-queue
+      QueueName: !Sub '${AWS::StackName}-dynamodb-cross-account-cdc-failed-events-queue'
       KmsMasterKeyId: !GetAtt KMSKeyForSQS.Arn
       VisibilityTimeout: 300
       MessageRetentionPeriod: 1209600
@@ -185,7 +185,7 @@ Resources:
   DynamodbCrossAccountCdcLambdaFunction:
     Type: 'AWS::Lambda::Function'
     Properties:
-      FunctionName: dynamodb-cross-account-cdc-lambda-function
+      FunctionName: !Sub '${AWS::StackName}-cross-account-cdc-lambda'
       Role: !GetAtt DynamodbCrossAccountCdcLambdaRole.Arn
       Code:
         S3Bucket:
@@ -213,7 +213,7 @@ Resources:
     Type: 'AWS::IAM::UserPolicy'
     Condition: IsUser
     Properties:
-      PolicyName: assume_role_for_user_policy
+      PolicyName: !Sub ${AWS::StackName}-assume_role_for_user_policy
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -221,13 +221,13 @@ Resources:
             Action:
               - 'sts:AssumeRole'
             Resource: 
-              Fn::Sub: "arn:aws:iam::${TargetAWSAccountNumber}:role/cross_account_assume_role"
+              Fn::Sub: "arn:aws:iam::${TargetAWSAccountNumber}:role/${AWS::StackName}CrossAccountCdcRole"
       UserName: !Ref SourceUserOrRoleName
   AssumeRolePolicyDocumentForRole:
     Type: 'AWS::IAM::RolePolicy'
     Condition: IsRole
     Properties:
-      PolicyName: assume_role_for_role_policy
+      PolicyName: !Sub ${AWS::StackName}-assume_role_for_role_policy
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -235,7 +235,7 @@ Resources:
             Action:
               - 'sts:AssumeRole'
             Resource: 
-              Fn::Sub: "arn:aws:iam::${TargetAWSAccountNumber}:role/cross_account_assume_role"
+              Fn::Sub: "arn:aws:iam::${TargetAWSAccountNumber}:role/${AWS::StackName}CrossAccountCdcRole"
       RoleName: !Ref SourceUserOrRoleName
   
 
